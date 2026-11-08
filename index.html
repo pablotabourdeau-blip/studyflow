@@ -26,7 +26,31 @@ function tr(value){return translations[language]?.[value]||value}
 function translateMarkup(html){let out=html;const dict=translations[language]||{};for(const [a,b] of Object.entries(dict)){if(a && a!==b)out=out.split(a).join(b)}return out;}
 const palette=['#7667e8','#e29b54','#4da98b','#d66c88','#5598c9','#9b75bd','#8e9b50'];
 const today=new Date();today.setHours(0,0,0,0);const iso=d=>{let x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`};
-let data=JSON.parse(localStorage.getItem(KEY)||'null')||{subjects:["Treball de Recerca 26-27","Tutoria Batx1","English 26-27 Batx1B","Filosofia 1r Batx B","Llengua i literatura castellana","Llengües +","Català 1r Batx B","Mates 1r Batx 26-27","Física 1r Batx","Tecnologia i Enginyeria","Química 1BTX 2027","Educació Física 1r BTX B"].map((name,i)=>({id:crypto.randomUUID(),name,color:palette[i%palette.length]})),tasks:[]};let page='dashboard',editId=null,month=new Date(today.getFullYear(),today.getMonth(),1),taskFilter='all';
+let data=JSON.parse(localStorage.getItem(KEY)||'null')||{subjects:["Treball de Recerca 26-27","Tutoria Batx1","English 26-27 Batx1B","Filosofia 1r Batx B","Llengua i literatura castellana","Llengües +","Català 1r Batx B","Mates 1r Batx 26-27","Física 1r Batx","Tecnologia i Enginyeria","Química 1BTX 2027","Educació Física 1r BTX B"].map((name,i)=>({id:crypto.randomUUID(),name,color:palette[i%palette.length]})),tasks:[]};
+const courseNames=["Treball de Recerca 26-27","Tutoria Batx1","English 26-27 Batx1B","Filosofia 1r Batx B","Llengua i literatura castellana","Llengües +","Català 1r Batx B","Mates 1r Batx 26-27","Física 1r Batx","Tecnologia i Enginyeria","Química 1BTX 2027","Educació Física 1r BTX B"];
+const legacyMap={"Mathematics":"Mates 1r Batx 26-27","Physics & Chemistry":"Física 1r Batx","English":"English 26-27 Batx1B","Catalan":"Català 1r Batx B","Spanish":"Llengua i literatura castellana"};
+const legacyNames=new Set(["Mathematics","Physics & Chemistry","History","English","Catalan","Spanish","Biology"]);
+for(const oldSub of [...(data.subjects||[])]){if(!legacyNames.has(oldSub.name))continue;const targetName=legacyMap[oldSub.name],used=data.tasks.some(t=>t.subjectId===oldSub.id);if(targetName){const target=data.subjects.find(s=>s.name===targetName&&s.id!==oldSub.id);if(target){data.tasks.forEach(t=>{if(t.subjectId===oldSub.id)t.subjectId=target.id});data.subjects=data.subjects.filter(s=>s.id!==oldSub.id)}else if(used){oldSub.name=targetName}else{data.subjects=data.subjects.filter(s=>s.id!==oldSub.id)}}else if(!used){data.subjects=data.subjects.filter(s=>s.id!==oldSub.id)}}
+for(const name of courseNames){if(!data.subjects.some(s=>s.name===name))data.subjects.push({id:crypto.randomUUID(),name,color:palette[data.subjects.length%palette.length]})}
+const orderedSubjects=courseNames.map(name=>data.subjects.find(s=>s.name===name)).filter(Boolean);const extraSubjects=data.subjects.filter(s=>!courseNames.includes(s.name));data.subjects=[...orderedSubjects,...extraSubjects];
+const examSeedKey="studyflow-exams-2026-nov-v1";
+if(!localStorage.getItem(examSeedKey)){
+ const examSpecs=[
+  ["2026-11-12","Llengua i literatura castellana","Examen de Castellano · 11:30–13:30"],
+  ["2026-11-13","Física 1r Batx","Examen de Física · 8:15–10:15"],
+  ["2026-11-13","Filosofia 1r Batx B","Examen de Filosofía · 11:30–13:30"],
+  ["2026-11-16","English 26-27 Batx1B","Examen de Inglés · 8:15–10:15"],
+  ["2026-11-16","Català 1r Batx B","Examen de Catalán · 11:30–13:30"],
+  ["2026-11-17","Tecnologia i Enginyeria","Examen de Tecnología · 11:30–13:30"],
+  ["2026-11-18","Química 1BTX 2027","Examen de Química · 9:15–11:15"],
+  ["2026-11-18","Mates 1r Batx 26-27","Examen de Matemáticas · 11:30–13:30"],
+  ["2026-11-20","Educació Física 1r BTX B","Examen de Educación Física"]
+ ];
+ for(const [date,subjectName,title] of examSpecs){const sub=data.subjects.find(s=>s.name===subjectName);if(sub&&!data.tasks.some(t=>t.type==="exam"&&t.date===date&&t.subjectId===sub.id))data.tasks.push({id:crypto.randomUUID(),title,subjectId:sub.id,date,type:"exam",done:false})}
+ localStorage.setItem(examSeedKey,"1");
+}
+localStorage.setItem(KEY,JSON.stringify(data));
+let page='dashboard',editId=null,month=new Date(today.getFullYear(),today.getMonth(),1),taskFilter='all';
 const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}function subject(id){return data.subjects.find(s=>s.id===id)}function fmt(date,opts={day:'numeric',month:'short'}){if(!date)return tr('No due date');return new Date(date+'T12:00:00').toLocaleDateString(language==='es'?'es-ES':language==='ca'?'ca-ES':'en-GB',opts)}function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');setTimeout(()=>$('#toast').classList.remove('show'),1900)}
 function setPage(p){page=p;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));render()}
