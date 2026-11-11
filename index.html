@@ -77,7 +77,7 @@ function subjectWorkload(s){
  const oldest=overdue.map(t=>t.date).filter(Boolean).sort()[0]||null;
  const daysLate=oldest?Math.max(0,Math.floor((new Date(iso(today)+'T12:00:00')-new Date(oldest+'T12:00:00'))/86400000)):0;
  const score=Math.min(100,pending.length*9+overdue.length*14+Math.min(daysLate,45)*1.1);
- const hue=Math.round(132-score*1.18);
+ const hue=Math.round(132-score*1.32);
  return {pending,overdueCount:overdue.length,daysLate,score,hue};
 }
 function subjectsPage(){
